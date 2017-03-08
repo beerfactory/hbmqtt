@@ -1,11 +1,24 @@
 language: python
 python:
   - "3.5"
+  - "3.6"
+  - "nightly"  # currently points to 3.7-dev
+
+before_install:
+    - pip install --upgrade pip setuptools
+    - pip install flake8
+
 install:
   - pip install -r requirements.txt
   - pip install tox
   - pip install coveralls
+
+before_script:
+    - flake8 . --count --statistics --exit-zero
+  
 # command to run tests
 script:
   - tox
+  - flake8 . --count --select=E999  # E999 SyntaxError: invalid syntax
+
 after_success: coveralls
