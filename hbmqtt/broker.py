@@ -463,8 +463,28 @@ class Broker:
                     self.logger.debug("%s handling subscription" % client_session.client_id)
                     subscriptions = subscribe_waiter.result()
                     return_codes = []
-                    for subscription in subscriptions['topics']:
-                        return_codes.append(self.add_subscription(subscription, client_session))
+                    subscribe_acl_plugins = self.listeners_config[listener_name]["subscribe_acl_plugins"]
+                    acl_result = True
+                    if subscribe_acl_plugins is not None:
+                        acl_results = yield from self.plugins_manager.map_plugin_coro(
+                            "subscribe",
+                            client_id=client_session.client_id,
+                            session=client_session,
+                            filter_plugins=subscribe_acl_plugins,
+                            subscriptions=subscriptions
+                        )
+                        if acl_results:
+                            for plugin in acl_results:
+                                res = acl_results[plugin]
+                                if res is False:
+                                    acl_result = False
+                                    self.logger.debug(
+                                        "Access deny due to '%s' plugin result: %s" % (plugin.name, res))
+                                else:
+                                    self.logger.debug("'%s' plugin result: %s" % (plugin.name, res))
+                    if acl_result:
+                        for subscription in subscriptions['topics']:
+                            return_codes.append(self.add_subscription(subscription, client_session))
                     yield from handler.mqtt_acknowledge_subscription(subscriptions['packet_id'], return_codes)
                     for index, subscription in enumerate(subscriptions['topics']):
                         if return_codes[index] != 0x80:
@@ -486,12 +506,32 @@ class Broker:
                     if "#" in app_message.topic or "+" in app_message.topic:
                         self.logger.warning("[MQTT-3.3.2-2] - %s invalid TOPIC sent in PUBLISH message, closing connection" % client_session.client_id)
                         break
-                    yield from self.plugins_manager.fire_event(EVENT_BROKER_MESSAGE_RECEIVED,
-                                                               client_id=client_session.client_id,
-                                                               message=app_message)
-                    yield from self._broadcast_message(client_session, app_message.topic, app_message.data)
-                    if app_message.publish_packet.retain_flag:
-                        self.retain_message(client_session, app_message.topic, app_message.data, app_message.qos)
+                    deliver_acl_plugins = self.listeners_config[listener_name]["deliver_acl_plugins"]
+                    acl_result = True
+                    if deliver_acl_plugins is not None:
+                        acl_results = yield from self.plugins_manager.map_plugin_coro(
+                            "deliver",
+                            client_id=client_session.client_id,
+                            session=client_session,
+                            filter_plugins=deliver_acl_plugins,
+                            topic=app_message.topic
+                        )
+                        if acl_results:
+                            for plugin in acl_results:
+                                res = acl_results[plugin]
+                                if res is False:
+                                    acl_result = False
+                                    self.logger.debug(
+                                        "Access deny due to '%s' plugin result: %s" % (plugin.name, res))
+                                else:
+                                    self.logger.debug("'%s' plugin result: %s" % (plugin.name, res))
+                    if acl_result:
+                        yield from self.plugins_manager.fire_event(EVENT_BROKER_MESSAGE_RECEIVED,
+                                                                   client_id=client_session.client_id,
+                                                                   message=app_message)
+                        yield from self._broadcast_message(client_session, app_message.topic, app_message.data)
+                        if app_message.publish_packet.retain_flag:
+                            self.retain_message(client_session, app_message.topic, app_message.data, app_message.qos)
                     wait_deliver = asyncio.Task(handler.mqtt_deliver_next_message(), loop=self._loop)
             except asyncio.CancelledError:
                 self.logger.debug("Client loop cancelled")
