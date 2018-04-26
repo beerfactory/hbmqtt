@@ -110,7 +110,7 @@ class MQTTClient:
         # Init plugins manager
         context = ClientContext()
         context.config = self.config
-        self.plugins_manager = PluginManager('hbmqtt.client.plugins', context)
+        self.plugins_manager = PluginManager('hbmqtt.client.plugins', context, loop=self._loop)
         self.client_tasks = deque()
 
     @asyncio.coroutine
