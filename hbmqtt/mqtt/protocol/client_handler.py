@@ -89,7 +89,7 @@ class ClientProtocolHandler(ProtocolHandler):
         try:
             if not self._ping_task:
                 self.logger.debug("Scheduling Ping")
-                self._ping_task = asyncio.ensure_future(self.mqtt_ping())
+                self._ping_task = asyncio.async(self.mqtt_ping())
         except BaseException as be:
             self.logger.debug("Exception ignored in ping task: %r" % be)
 
