@@ -288,7 +288,7 @@ class Broker:
             yield from self.plugins_manager.fire_event(EVENT_BROKER_POST_START)
 
             #Start broadcast loop
-            self._broadcast_task = asyncio.ensure_future(self._broadcast_loop(), loop=self._loop)
+            self._broadcast_task = asyncio.async(self._broadcast_loop(), loop=self._loop)
 
             self.logger.debug("Broker started")
         except Exception as e:
@@ -416,10 +416,10 @@ class Broker:
         yield from self.publish_session_retained_messages(client_session)
 
         # Init and start loop for handling client messages (publish, subscribe/unsubscribe, disconnect)
-        disconnect_waiter = asyncio.ensure_future(handler.wait_disconnect(), loop=self._loop)
-        subscribe_waiter = asyncio.ensure_future(handler.get_next_pending_subscription(), loop=self._loop)
-        unsubscribe_waiter = asyncio.ensure_future(handler.get_next_pending_unsubscription(), loop=self._loop)
-        wait_deliver = asyncio.ensure_future(handler.mqtt_deliver_next_message(), loop=self._loop)
+        disconnect_waiter = asyncio.async(handler.wait_disconnect(), loop=self._loop)
+        subscribe_waiter = asyncio.async(handler.get_next_pending_subscription(), loop=self._loop)
+        unsubscribe_waiter = asyncio.async(handler.get_next_pending_unsubscription(), loop=self._loop)
+        wait_deliver = asyncio.async(handler.mqtt_deliver_next_message(), loop=self._loop)
         connected = True
         while connected:
             try:
@@ -708,7 +708,7 @@ class Broker:
                                                   (format_client_message(session=broadcast['session']),
                                                    broadcast['topic'], format_client_message(session=target_session)))
                                 handler = self._get_handler(target_session)
-                                task = asyncio.ensure_future(
+                                task = asyncio.async(
                                     handler.mqtt_publish(broadcast['topic'], broadcast['data'], qos, retain=False),
                                     loop=self._loop)
                                 running_tasks.append(task)
@@ -744,7 +744,7 @@ class Broker:
         handler = self._get_handler(session)
         while not session.retained_messages.empty():
             retained = yield from session.retained_messages.get()
-            publish_tasks.append(asyncio.ensure_future(
+            publish_tasks.append(asyncio.async(
                 handler.mqtt_publish(
                     retained.topic, retained.data, retained.qos, True), loop=self._loop))
         if publish_tasks:

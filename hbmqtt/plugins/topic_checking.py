@@ -28,10 +28,10 @@ class TopicTabooPlugin(BaseTopicPlugin):
         if filter_result:
             session = kwargs.get('session', None)
             topic = kwargs.get('topic', None)
-            if session.username and topic:
-                if session.username != 'admin' and topic in self._taboo:
-                    return False
+            if session.username and session.username == 'admin':
                 return True
-            else:
+            if topic and (topic in self._taboo):
                 return False
+            else:
+                return True
         return filter_result

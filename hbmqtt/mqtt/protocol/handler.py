@@ -382,31 +382,31 @@ class ProtocolHandler:
                             EVENT_MQTT_PACKET_RECEIVED, packet=packet, session=self.session)
                         task = None
                         if packet.fixed_header.packet_type == CONNACK:
-                            task = asyncio.ensure_future(self.handle_connack(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_connack(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == SUBSCRIBE:
-                            task = asyncio.ensure_future(self.handle_subscribe(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_subscribe(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == UNSUBSCRIBE:
-                            task = asyncio.ensure_future(self.handle_unsubscribe(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_unsubscribe(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == SUBACK:
-                            task = asyncio.ensure_future(self.handle_suback(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_suback(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == UNSUBACK:
-                            task = asyncio.ensure_future(self.handle_unsuback(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_unsuback(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PUBACK:
-                            task = asyncio.ensure_future(self.handle_puback(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_puback(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PUBREC:
-                            task = asyncio.ensure_future(self.handle_pubrec(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_pubrec(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PUBREL:
-                            task = asyncio.ensure_future(self.handle_pubrel(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_pubrel(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PUBCOMP:
-                            task = asyncio.ensure_future(self.handle_pubcomp(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_pubcomp(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PINGREQ:
-                            task = asyncio.ensure_future(self.handle_pingreq(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_pingreq(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PINGRESP:
-                            task = asyncio.ensure_future(self.handle_pingresp(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_pingresp(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == PUBLISH:
-                            task = asyncio.ensure_future(self.handle_publish(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_publish(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == DISCONNECT:
-                            task = asyncio.ensure_future(self.handle_disconnect(packet), loop=self._loop)
+                            task = asyncio.async(self.handle_disconnect(packet), loop=self._loop)
                         elif packet.fixed_header.packet_type == CONNECT:
                             self.handle_connect(packet)
                         else:
