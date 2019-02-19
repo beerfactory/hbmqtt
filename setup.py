@@ -55,9 +55,9 @@ setup(
             'packet_logger_plugin = hbmqtt.plugins.logging:PacketLoggerPlugin',
         ],
         'console_scripts': [
-            'hbmqtt = scripts.broker_script:main',
-            'hbmqtt_pub = scripts.pub_script:main',
-            'hbmqtt_sub = scripts.sub_script:main',
+            'hbmqtt = hbmqtt.scripts.broker_script:main',
+            'hbmqtt_pub = hbmqtt.scripts.pub_script:main',
+            'hbmqtt_sub = hbmqtt.scripts.sub_script:main',
         ]
     }
 )

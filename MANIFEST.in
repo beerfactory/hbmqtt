@@ -10,8 +10,9 @@ recursive-include docs *.html
 recursive-include docs *.py
 recursive-include docs *.rst
 recursive-include docs Makefile
+recursive-include hbmqtt/scripts *.py
+recursive-include hbmqtt/scripts *.yaml
 recursive-include samples *.crt
 recursive-include samples *.py
-recursive-include scripts *.yaml
 recursive-include tests *.crt
 recursive-include tests *.py
