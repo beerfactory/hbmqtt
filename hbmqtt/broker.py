@@ -683,8 +683,8 @@ class Broker:
             return a_filter == topic
         else:
             # else use regex
-            match_pattern = re.compile(a_filter.replace('#', '.*').replace('$', '\$').replace('+', '[/\$\s\w\d]+'))
-            return match_pattern.match(topic)
+            match_pattern = re.compile(re.escape(a_filter).replace('\\#', '?.*').replace('\\+', '[^/]*').lstrip('?'))
+            return match_pattern.fullmatch(topic)
 
     @asyncio.coroutine
     def _broadcast_loop(self):

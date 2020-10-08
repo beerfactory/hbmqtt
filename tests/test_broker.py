@@ -565,6 +565,92 @@ class BrokerTest(unittest.TestCase):
             raise future.exception()
 
     @patch('hbmqtt.broker.PluginManager')
+    def test_client_subscribe_publish_multi_level_wildcard(self, MockPluginManager):
+        @asyncio.coroutine
+        def test_coro():
+            try:
+                broker = Broker(test_config, plugin_namespace="hbmqtt.test.plugins")
+                yield from broker.start()
+                self.assertTrue(broker.transitions.is_started())
+                sub_client = MQTTClient()
+                yield from sub_client.connect('mqtt://127.0.0.1')
+                ret = yield from sub_client.subscribe([('sport/tennis/player1/#', QOS_0)])
+                self.assertEqual(ret, [QOS_0])
+
+                for bad_topic in [
+                    'sport/tennis',
+                    'sport/tennis/',
+                ]:
+                    yield from self._client_publish(bad_topic, b'data', QOS_0)
+                    with self.assertRaises(asyncio.TimeoutError, msg=bad_topic):
+                        yield from sub_client.deliver_message(timeout=2)
+
+                for good_topic in [
+                    'sport/tennis/player1',
+                    'sport/tennis/player1/',
+                    'sport/tennis/player1/ranking',
+                    'sport/tennis/player1/score/wimbledon',
+                ]:
+                    yield from self._client_publish(good_topic, b'data', QOS_0)
+                    yield from sub_client.deliver_message(timeout=2)
+
+                yield from sub_client.disconnect()
+                yield from asyncio.sleep(0.1)
+                yield from broker.shutdown()
+                self.assertTrue(broker.transitions.is_stopped())
+                future.set_result(True)
+            except Exception as ae:
+                future.set_exception(ae)
+
+        future = asyncio.Future(loop=self.loop)
+        self.loop.run_until_complete(test_coro())
+        if future.exception():
+            raise future.exception()
+
+    @patch('hbmqtt.broker.PluginManager')
+    def test_client_subscribe_publish_single_level_wildcard(self, MockPluginManager):
+        @asyncio.coroutine
+        def test_coro():
+            try:
+                broker = Broker(test_config, plugin_namespace="hbmqtt.test.plugins")
+                yield from broker.start()
+                self.assertTrue(broker.transitions.is_started())
+                sub_client = MQTTClient()
+                yield from sub_client.connect('mqtt://127.0.0.1')
+                ret = yield from sub_client.subscribe([('sport/tennis/+', QOS_0)])
+                self.assertEqual(ret, [QOS_0])
+
+                for bad_topic in [
+                    'sport/tennis',
+                    'sport/tennis/player1/',
+                    'sport/tennis/player1/ranking',
+                ]:
+                    yield from self._client_publish(bad_topic, b'data', QOS_0)
+                    with self.assertRaises(asyncio.TimeoutError, msg=bad_topic):
+                        yield from sub_client.deliver_message(timeout=2)
+
+                for good_topic in [
+                    'sport/tennis/',
+                    'sport/tennis/player1',
+                    'sport/tennis/player2',
+                ]:
+                    yield from self._client_publish(good_topic, b'data', QOS_0)
+                    yield from sub_client.deliver_message(timeout=2)
+
+                yield from sub_client.disconnect()
+                yield from asyncio.sleep(0.1)
+                yield from broker.shutdown()
+                self.assertTrue(broker.transitions.is_stopped())
+                future.set_result(True)
+            except Exception as ae:
+                future.set_exception(ae)
+
+        future = asyncio.Future(loop=self.loop)
+        self.loop.run_until_complete(test_coro())
+        if future.exception():
+            raise future.exception()
+
+    @patch('hbmqtt.broker.PluginManager')
     def test_client_subscribe_invalid(self, MockPluginManager):
         @asyncio.coroutine
         def test_coro():
@@ -643,7 +729,7 @@ class BrokerTest(unittest.TestCase):
                 ret = yield from sub_client.subscribe([('+/monitor/Clients', QOS_0)])
                 self.assertEqual(ret, [QOS_0])
 
-                yield from self._client_publish('/test/monitor/Clients', b'data', QOS_0)
+                yield from self._client_publish('test/monitor/Clients', b'data', QOS_0)
                 message = yield from sub_client.deliver_message()
                 self.assertIsNotNone(message)
 
