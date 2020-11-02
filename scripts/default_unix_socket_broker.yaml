@@ -1,12 +1,12 @@
 listeners:
   default:
-    type: tcp
-    bind: 0.0.0.0:1883
+    type: unix
+    bind: /tmp/test-mqtt
 sys_interval: 20
 auth:
   allow-anonymous: true
 plugins:
-  - auth_file
   - auth_anonymous
 topic-check:
-  enabled: False
+  enabled: true
+  plugins: topic_taboo
