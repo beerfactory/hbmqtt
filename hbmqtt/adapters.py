@@ -121,7 +121,7 @@ class WebSocketsWriter(WriterAdapter):
         self._stream = io.BytesIO(b'')
 
     def get_peer_info(self):
-        return self._protocol.remote_address
+        return self._protocol.remote_address[:2]
 
     @asyncio.coroutine
     def close(self):
