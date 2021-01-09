@@ -725,7 +725,8 @@ class Broker:
                                     broadcast['session'], broadcast['topic'], broadcast['data'], qos)
                                 yield from target_session.retained_messages.put(retained_message)
                                 if self.logger.isEnabledFor(logging.DEBUG):
-                                    self.logger.debug(f'target_session.retained_messages={target_session.retained_messages.qsize()}')
+                                    self.logger.debug("target_session.retained_messages=%s" %
+                                                      target_session.retained_messages.qsize())
         except CancelledError:
             # Wait until current broadcasting tasks end
             if running_tasks:
