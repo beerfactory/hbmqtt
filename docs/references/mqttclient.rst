@@ -164,6 +164,7 @@ The :class:`~hbmqtt.client.MQTTClient` ``__init__`` method accepts a ``config`` 
 * ``default_qos``: Default QoS (``0``) used by :meth:`~hbmqtt.client.MQTTClient.publish` if ``qos`` argument is not given.
 * ``default_retain``: Default retain (``False``) used by :meth:`~hbmqtt.client.MQTTClient.publish` if ``qos`` argument is not given.,
 * ``auto_reconnect``: enable or disable auto-reconnect feature (defaults to ``True``).
+* ``ca_certs``: a string path to the Certificate Authority certificate files that are to be treated as trusted by this client. If provided, the client will require the broker to have a certificate signed by the Certificate Authorities in ca_certs and will communicate using TLS, if not provided the client will use the system's Certificate Authorities.
 * ``reconnect_max_interval``: maximum interval (in seconds) to wait before two connection retries (defaults to ``10``).
 * ``reconnect_retries``: maximum number of connect retries (defaults to ``2``). Negative value will cause client to reconnect infinietly.
 Default QoS and default retain can also be overriden by adding a ``topics`` with may contain QoS and retain values for specific topics. See the following example:
