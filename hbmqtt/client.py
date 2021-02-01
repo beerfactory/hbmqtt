@@ -147,6 +147,8 @@ class MQTTClient:
 
         try:
             return (yield from self._do_connect())
+        except asyncio.CancelledError:
+            raise
         except BaseException as be:
             self.logger.warning("Connection failed: %r" % be)
             auto_reconnect = self.config.get('auto_reconnect', False)
@@ -218,6 +220,8 @@ class MQTTClient:
             try:
                 self.logger.debug("Reconnect attempt %d ..." % nb_attempt)
                 return (yield from self._do_connect())
+            except asyncio.CancelledError:
+                raise
             except BaseException as e:
                 self.logger.warning("Reconnection attempt failed: %r" % e)
                 if reconnect_retries >= 0 and nb_attempt > reconnect_retries:
