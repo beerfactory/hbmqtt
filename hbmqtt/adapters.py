@@ -3,7 +3,7 @@
 # See the file license.txt for copying permission.
 import asyncio
 import io
-from websockets.protocol import WebSocketCommonProtocol
+from websockets.legacy.protocol import WebSocketCommonProtocol
 from websockets.exceptions import ConnectionClosed
 from asyncio import StreamReader, StreamWriter
 import logging
