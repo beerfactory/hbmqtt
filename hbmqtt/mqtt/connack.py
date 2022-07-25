@@ -25,9 +25,8 @@ class ConnackVariableHeader(MQTTVariableHeader):
         self.return_code = return_code
 
     @classmethod
-    @asyncio.coroutine
-    def from_stream(cls, reader: ReaderAdapter, fixed_header: MQTTFixedHeader):
-        data = yield from read_or_raise(reader, 2)
+    async def from_stream(cls, reader: ReaderAdapter, fixed_header: MQTTFixedHeader):
+        data = await read_or_raise(reader, 2)
         session_parent = data[0] & 0x01
         return_code = bytes_to_int(data[1])
         return cls(session_parent, return_code)

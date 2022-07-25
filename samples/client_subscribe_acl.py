@@ -14,13 +14,12 @@ from hbmqtt.mqtt.constants import QOS_1
 logger = logging.getLogger(__name__)
 
 
-@asyncio.coroutine
-def uptime_coro():
+async def uptime_coro():
     C = MQTTClient()
-    yield from C.connect('mqtt://test:test@0.0.0.0:1883')
-    # yield from C.connect('mqtt://0.0.0.0:1883')
+    await C.connect('mqtt://test:test@0.0.0.0:1883')
+    # await C.connect('mqtt://0.0.0.0:1883')
     # Subscribe to '$SYS/broker/uptime' with QOS=1
-    yield from C.subscribe([
+    await C.subscribe([
         ('data/memes', QOS_1),  # Topic allowed
         ('data/classified', QOS_1),  # Topic forbidden
         ('repositories/hbmqtt/master', QOS_1),  # Topic allowed
@@ -30,12 +29,12 @@ def uptime_coro():
     logger.info("Subscribed")
     try:
         for i in range(1, 100):
-            message = yield from C.deliver_message()
+            message = await C.deliver_message()
             packet = message.publish_packet
             print("%d: %s => %s" % (i, packet.variable_header.topic_name, str(packet.payload.data)))
-        yield from C.unsubscribe(['$SYS/broker/uptime', '$SYS/broker/load/#'])
+        await C.unsubscribe(['$SYS/broker/uptime', '$SYS/broker/load/#'])
         logger.info("UnSubscribed")
-        yield from C.disconnect()
+        await C.disconnect()
     except ClientException as ce:
         logger.error("Client exception: %s" % ce)
 

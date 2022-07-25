@@ -30,12 +30,11 @@ class PublishVariableHeader(MQTTVariableHeader):
         return out
 
     @classmethod
-    @asyncio.coroutine
-    def from_stream(cls, reader: asyncio.StreamReader, fixed_header: MQTTFixedHeader):
-        topic_name = yield from decode_string(reader)
+    async def from_stream(cls, reader: asyncio.StreamReader, fixed_header: MQTTFixedHeader):
+        topic_name = await decode_string(reader)
         has_qos = (fixed_header.flags >> 1) & 0x03
         if has_qos:
-            packet_id = yield from decode_packet_id(reader)
+            packet_id = await decode_packet_id(reader)
         else:
             packet_id = None
         return cls(topic_name, packet_id)
@@ -53,14 +52,13 @@ class PublishPayload(MQTTPayload):
         return self.data
 
     @classmethod
-    @asyncio.coroutine
-    def from_stream(cls, reader: asyncio.StreamReader, fixed_header: MQTTFixedHeader,
+    async def from_stream(cls, reader: asyncio.StreamReader, fixed_header: MQTTFixedHeader,
                     variable_header: MQTTVariableHeader):
         data = bytearray()
         data_length = fixed_header.remaining_length - variable_header.bytes_length
         length_read = 0
         while length_read < data_length:
-            buffer = yield from reader.read(data_length - length_read)
+            buffer = await reader.read(data_length - length_read)
             data.extend(buffer)
             length_read = len(data)
         return cls(data)

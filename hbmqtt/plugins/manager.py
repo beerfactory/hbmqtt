@@ -62,7 +62,7 @@ class PluginManager:
         for ep in pkg_resources.iter_entry_points(group=namespace):
             plugin = self._load_plugin(ep)
             self._plugins.append(plugin)
-            self.logger.debug(" Plugin %s ready" % plugin.ep.name)
+            self.logger.debug(" Plugin %s ready" % ep.name)
 
     def _load_plugin(self, ep: pkg_resources.EntryPoint):
         try:
@@ -89,14 +89,13 @@ class PluginManager:
                 return p
         return None
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         """
         Free PluginManager resources and cancel pending event methods
         This method call a close() coroutine for each plugin, allowing plugins to close and free resources
         :return:
         """
-        yield from self.map_plugin_coro("close")
+        await self.map_plugin_coro("close")
         for task in self._fired_events:
             task.cancel()
 
@@ -111,11 +110,10 @@ class PluginManager:
     def _schedule_coro(self, coro):
         return asyncio.ensure_future(coro, loop=self._loop)
 
-    @asyncio.coroutine
-    def fire_event(self, event_name, wait=False, *args, **kwargs):
+    async def fire_event(self, event_name, wait=False, *args, **kwargs):
         """
         Fire an event to plugins.
-        PluginManager schedule @asyncio.coroutinecalls for each plugin on method called "on_" + event_name
+        PluginManager schedule async calls for each plugin on method called "on_" + event_name
         For example, on_connect will be called on event 'connect'
         Method calls are schedule in the asyn loop. wait parameter must be set to true to wait until all
         mehtods are completed.
@@ -148,12 +146,10 @@ class PluginManager:
         self._fired_events.extend(tasks)
         if wait:
             if tasks:
-                yield from asyncio.wait(tasks, loop=self._loop)
-        if self.logger.isEnabledFor(logging.DEBUG):
-            self.logger.debug("Plugins len(_fired_events)=%d" % (len(self._fired_events)))
+                await asyncio.wait(tasks, loop=self._loop)
+        self.logger.debug("Plugins len(_fired_events)=%d" % (len(self._fired_events)))
 
-    @asyncio.coroutine
-    def map(self, coro, *args, **kwargs):
+    async def map(self, coro, *args, **kwargs):
         """
         Schedule a given coroutine call for each plugin.
         The coro called get the Plugin instance as first argument of its method call
@@ -180,7 +176,7 @@ class PluginManager:
                         self.logger.error("Method '%r' on plugin '%s' is not a coroutine" %
                                           (coro, plugin.name))
         if tasks:
-            ret_list = yield from asyncio.gather(*tasks, loop=self._loop)
+            ret_list = await asyncio.gather(*tasks, loop=self._loop)
             # Create result map plugin=>ret
             ret_dict = {k: v for k, v in zip(plugins_list, ret_list)}
         else:
@@ -188,17 +184,15 @@ class PluginManager:
         return ret_dict
 
     @staticmethod
-    @asyncio.coroutine
-    def _call_coro(plugin, coro_name, *args, **kwargs):
+    async def _call_coro(plugin, coro_name, *args, **kwargs):
         try:
             coro = getattr(plugin.object, coro_name, None)(*args, **kwargs)
-            return (yield from coro)
+            return (await coro)
         except TypeError:
             # Plugin doesn't implement coro_name
             return None
 
-    @asyncio.coroutine
-    def map_plugin_coro(self, coro_name, *args, **kwargs):
+    async def map_plugin_coro(self, coro_name, *args, **kwargs):
         """
         Call a plugin declared by plugin by its name
         :param coro_name:
@@ -206,4 +200,4 @@ class PluginManager:
         :param kwargs:
         :return:
         """
-        return (yield from self.map(self._call_coro, coro_name, *args, **kwargs))
+        return (await self.map(self._call_coro, coro_name, *args, **kwargs))

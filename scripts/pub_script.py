@@ -93,14 +93,13 @@ def _get_message(arguments):
         yield message
 
 
-@asyncio.coroutine
-def do_pub(client, arguments):
+async def do_pub(client, arguments):
     running_tasks = []
 
     try:
         logger.info("%s Connecting to broker" % client.client_id)
 
-        yield from client.connect(uri=arguments['--url'],
+        await client.connect(uri=arguments['--url'],
                                   cleansession=arguments['--clean-session'],
                                   cafile=arguments['--ca-file'],
                                   capath=arguments['--ca-path'],
@@ -114,11 +113,11 @@ def do_pub(client, arguments):
             task = asyncio.ensure_future(client.publish(topic, message, qos, retain))
             running_tasks.append(task)
         if running_tasks:
-            yield from asyncio.wait(running_tasks)
-        yield from client.disconnect()
+            await asyncio.wait(running_tasks)
+        await client.disconnect()
         logger.info("%s Disconnected from broker" % client.client_id)
     except KeyboardInterrupt:
-        yield from client.disconnect()
+        await client.disconnect()
         logger.info("%s Disconnected from broker" % client.client_id)
     except ConnectException as ce:
         logger.fatal("connection to '%s' failed: %r" % (arguments['--url'], ce))

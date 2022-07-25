@@ -67,11 +67,10 @@ def _get_extra_headers(arguments):
         return {}
 
 
-@asyncio.coroutine
-def do_sub(client, arguments):
+async def do_sub(client, arguments):
 
     try:
-        yield from client.connect(uri=arguments['--url'],
+        await client.connect(uri=arguments['--url'],
                                   cleansession=arguments['--clean-session'],
                                   cafile=arguments['--ca-file'],
                                   capath=arguments['--ca-path'],
@@ -81,7 +80,7 @@ def do_sub(client, arguments):
         filters = []
         for topic in arguments['-t']:
             filters.append((topic, qos))
-        yield from client.subscribe(filters)
+        await client.subscribe(filters)
         if arguments['-n']:
             max_count = int(arguments['-n'])
         else:
@@ -91,15 +90,15 @@ def do_sub(client, arguments):
             if max_count and count >= max_count:
                 break
             try:
-                message = yield from client.deliver_message()
+                message = await client.deliver_message()
                 count += 1
                 sys.stdout.buffer.write(message.publish_packet.data)
                 sys.stdout.write('\n')
             except MQTTException:
                 logger.debug("Error reading packet")
-        yield from client.disconnect()
+        await client.disconnect()
     except KeyboardInterrupt:
-        yield from client.disconnect()
+        await client.disconnect()
     except ConnectException as ce:
         logger.fatal("connection to '%s' failed: %r" % (arguments['--url'], ce))
     except asyncio.CancelledError as cae:

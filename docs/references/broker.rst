@@ -16,10 +16,9 @@ The following example shows how to start a broker using the default configuratio
     from hbmqtt.broker import Broker
 
 
-    @asyncio.coroutine
-    def broker_coro():
+    async def broker_coro():
         broker = Broker()
-        yield from broker.start()
+        await broker.start()
 
 
     if __name__ == '__main__':

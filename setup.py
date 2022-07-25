@@ -8,7 +8,7 @@ from hbmqtt.version import get_version
 setup(
     name="hbmqtt",
     version=get_version(),
-    description="MQTT client/broker using Python 3.4 asyncio library",
+    description="MQTT client/broker using Python asyncio library",
     author="Nicolas Jouanin",
     author_email='nico@beerfactory.org',
     url="https://github.com/beerfactory/hbmqtt",
@@ -30,9 +30,11 @@ setup(
         'Operating System :: POSIX',
         'Operating System :: MacOS',
         'Operating System :: Microsoft :: Windows',
-        'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Topic :: Communications',
         'Topic :: Internet'
     ],

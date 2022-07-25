@@ -22,30 +22,28 @@ config = {
 }
 
 
-@asyncio.coroutine
-def test_coro():
+async def test_coro():
     C = MQTTClient()
-    yield from C.connect('mqtt://test.mosquitto.org/')
+    await C.connect('mqtt://test.mosquitto.org/')
     tasks = [
         asyncio.ensure_future(C.publish('a/b', b'TEST MESSAGE WITH QOS_0')),
         asyncio.ensure_future(C.publish('a/b', b'TEST MESSAGE WITH QOS_1', qos=QOS_1)),
         asyncio.ensure_future(C.publish('a/b', b'TEST MESSAGE WITH QOS_2', qos=QOS_2)),
     ]
-    yield from asyncio.wait(tasks)
+    await asyncio.wait(tasks)
     logger.info("messages published")
-    yield from C.disconnect()
+    await C.disconnect()
 
 
-@asyncio.coroutine
-def test_coro2():
+async def test_coro2():
     try:
         C = MQTTClient()
-        yield from C.connect('mqtt://test.mosquitto.org:1883/')
-        yield from C.publish('a/b', b'TEST MESSAGE WITH QOS_0', qos=0x00)
-        yield from C.publish('a/b', b'TEST MESSAGE WITH QOS_1', qos=0x01)
-        yield from C.publish('a/b', b'TEST MESSAGE WITH QOS_2', qos=0x02)
+        await C.connect('mqtt://test.mosquitto.org:1883/')
+        await C.publish('a/b', b'TEST MESSAGE WITH QOS_0', qos=0x00)
+        await C.publish('a/b', b'TEST MESSAGE WITH QOS_1', qos=0x01)
+        await C.publish('a/b', b'TEST MESSAGE WITH QOS_2', qos=0x02)
         logger.info("messages published")
-        yield from C.disconnect()
+        await C.disconnect()
     except ConnectException as ce:
         logger.error("Connection failed: %s" % ce)
         asyncio.get_event_loop().stop()

@@ -22,8 +22,7 @@ class TopicTabooPlugin(BaseTopicPlugin):
         super().__init__(context)
         self._taboo = ['prohibited', 'top-secret', 'data/classified']
 
-    @asyncio.coroutine
-    def topic_filtering(self, *args, **kwargs):
+    async def topic_filtering(self, *args, **kwargs):
         filter_result = super().topic_filtering(*args, **kwargs)
         if filter_result:
             session = kwargs.get('session', None)
@@ -62,8 +61,7 @@ class TopicAccessControlListPlugin(BaseTopicPlugin):
                 break
         return ret
 
-    @asyncio.coroutine
-    def topic_filtering(self, *args, **kwargs):
+    async def topic_filtering(self, *args, **kwargs):
         filter_result = super().topic_filtering(*args, **kwargs)
         if filter_result:
             session = kwargs.get('session', None)

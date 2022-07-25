@@ -46,20 +46,18 @@ class ProtocolHandlerTest(unittest.TestCase):
         self.check_empty_waiters(handler)
 
     def test_start_stop(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             pass
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
                 s = Session()
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 handler = ProtocolHandler(self.plugin_manager)
                 handler.attach(s, reader_adapted, writer_adapted)
-                yield from self.start_handler(handler, s)
-                yield from self.stop_handler(handler, s)
+                await self.start_handler(handler, s)
+                await self.stop_handler(handler, s)
                 future.set_result(True)
             except Exception as ae:
                 future.set_exception(ae)
@@ -74,33 +72,31 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_publish_qos0(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             try:
-                packet = yield from PublishPacket.from_stream(reader)
+                packet = await PublishPacket.from_stream(reader)
                 self.assertEqual(packet.variable_header.topic_name, '/topic')
                 self.assertEqual(packet.qos, QOS_0)
                 self.assertIsNone(packet.packet_id)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
                 s = Session()
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 handler.attach(s, reader_adapted, writer_adapted)
-                yield from self.start_handler(handler, s)
-                message = yield from handler.mqtt_publish('/topic', b'test_data', QOS_0, False)
+                await self.start_handler(handler, s)
+                message = await handler.mqtt_publish('/topic', b'test_data', QOS_0, False)
                 self.assertIsInstance(message, OutgoingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNone(message.puback_packet)
                 self.assertIsNone(message.pubrec_packet)
                 self.assertIsNone(message.pubrel_packet)
                 self.assertIsNone(message.pubcomp_packet)
-                yield from self.stop_handler(handler, s)
+                await self.stop_handler(handler, s)
                 future.set_result(True)
             except Exception as ae:
                 future.set_exception(ae)
@@ -115,9 +111,8 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_publish_qos1(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
-            packet = yield from PublishPacket.from_stream(reader)
+        async def server_mock(reader, writer):
+            packet = await PublishPacket.from_stream(reader)
             try:
                 self.assertEqual(packet.variable_header.topic_name, '/topic')
                 self.assertEqual(packet.qos, QOS_1)
@@ -125,26 +120,25 @@ class ProtocolHandlerTest(unittest.TestCase):
                 self.assertIn(packet.packet_id, self.session.inflight_out)
                 self.assertIn(packet.packet_id, self.handler._puback_waiters)
                 puback = PubackPacket.build(packet.packet_id)
-                yield from puback.to_stream(writer)
+                await puback.to_stream(writer)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.start_handler(self.handler, self.session)
-                message = yield from self.handler.mqtt_publish('/topic', b'test_data', QOS_1, False)
+                await self.start_handler(self.handler, self.session)
+                message = await self.handler.mqtt_publish('/topic', b'test_data', QOS_1, False)
                 self.assertIsInstance(message, OutgoingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNotNone(message.puback_packet)
                 self.assertIsNone(message.pubrec_packet)
                 self.assertIsNone(message.pubrel_packet)
                 self.assertIsNone(message.pubcomp_packet)
-                yield from self.stop_handler(self.handler, self.session)
+                await self.stop_handler(self.handler, self.session)
                 if not future.done():
                     future.set_result(True)
             except Exception as ae:
@@ -162,41 +156,39 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_publish_qos2(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             try:
-                packet = yield from PublishPacket.from_stream(reader)
+                packet = await PublishPacket.from_stream(reader)
                 self.assertEqual(packet.topic_name, '/topic')
                 self.assertEqual(packet.qos, QOS_2)
                 self.assertIsNotNone(packet.packet_id)
                 self.assertIn(packet.packet_id, self.session.inflight_out)
                 self.assertIn(packet.packet_id, self.handler._pubrec_waiters)
                 pubrec = PubrecPacket.build(packet.packet_id)
-                yield from pubrec.to_stream(writer)
+                await pubrec.to_stream(writer)
 
-                yield from PubrelPacket.from_stream(reader)
+                await PubrelPacket.from_stream(reader)
                 self.assertIn(packet.packet_id, self.handler._pubcomp_waiters)
                 pubcomp = PubcompPacket.build(packet.packet_id)
-                yield from pubcomp.to_stream(writer)
+                await pubcomp.to_stream(writer)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.start_handler(self.handler, self.session)
-                message = yield from self.handler.mqtt_publish('/topic', b'test_data', QOS_2, False)
+                await self.start_handler(self.handler, self.session)
+                message = await self.handler.mqtt_publish('/topic', b'test_data', QOS_2, False)
                 self.assertIsInstance(message, OutgoingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNone(message.puback_packet)
                 self.assertIsNotNone(message.pubrec_packet)
                 self.assertIsNotNone(message.pubrel_packet)
                 self.assertIsNotNone(message.pubcomp_packet)
-                yield from self.stop_handler(self.handler, self.session)
+                await self.stop_handler(self.handler, self.session)
                 if not future.done():
                     future.set_result(True)
             except Exception as ae:
@@ -214,27 +206,25 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_receive_qos0(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             packet = PublishPacket.build('/topic', b'test_data', rand_packet_id(), False, QOS_0, False)
-            yield from packet.to_stream(writer)
+            await packet.to_stream(writer)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.start_handler(self.handler, self.session)
-                message = yield from self.handler.mqtt_deliver_next_message()
+                await self.start_handler(self.handler, self.session)
+                message = await self.handler.mqtt_deliver_next_message()
                 self.assertIsInstance(message, IncomingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNone(message.puback_packet)
                 self.assertIsNone(message.pubrec_packet)
                 self.assertIsNone(message.pubrel_packet)
                 self.assertIsNone(message.pubcomp_packet)
-                yield from self.stop_handler(self.handler, self.session)
+                await self.stop_handler(self.handler, self.session)
                 future.set_result(True)
             except Exception as ae:
                 future.set_exception(ae)
@@ -251,34 +241,32 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_receive_qos1(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             try:
                 packet = PublishPacket.build('/topic', b'test_data', rand_packet_id(), False, QOS_1, False)
-                yield from packet.to_stream(writer)
-                puback = yield from PubackPacket.from_stream(reader)
+                await packet.to_stream(writer)
+                puback = await PubackPacket.from_stream(reader)
                 self.assertIsNotNone(puback)
                 self.assertEqual(packet.packet_id, puback.packet_id)
             except Exception as ae:
                 print(ae)
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.start_handler(self.handler, self.session)
-                message = yield from self.handler.mqtt_deliver_next_message()
+                await self.start_handler(self.handler, self.session)
+                message = await self.handler.mqtt_deliver_next_message()
                 self.assertIsInstance(message, IncomingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNotNone(message.puback_packet)
                 self.assertIsNone(message.pubrec_packet)
                 self.assertIsNone(message.pubrel_packet)
                 self.assertIsNone(message.pubcomp_packet)
-                yield from self.stop_handler(self.handler, self.session)
+                await self.stop_handler(self.handler, self.session)
                 future.set_result(True)
             except Exception as ae:
                 future.set_exception(ae)
@@ -296,39 +284,37 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_receive_qos2(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             try:
                 packet = PublishPacket.build('/topic', b'test_data', rand_packet_id(), False, QOS_2, False)
-                yield from packet.to_stream(writer)
-                pubrec = yield from PubrecPacket.from_stream(reader)
+                await packet.to_stream(writer)
+                pubrec = await PubrecPacket.from_stream(reader)
                 self.assertIsNotNone(pubrec)
                 self.assertEqual(packet.packet_id, pubrec.packet_id)
                 self.assertIn(packet.packet_id, self.handler._pubrel_waiters)
                 pubrel = PubrelPacket.build(packet.packet_id)
-                yield from pubrel.to_stream(writer)
-                pubcomp = yield from PubcompPacket.from_stream(reader)
+                await pubrel.to_stream(writer)
+                pubcomp = await PubcompPacket.from_stream(reader)
                 self.assertIsNotNone(pubcomp)
                 self.assertEqual(packet.packet_id, pubcomp.packet_id)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.start_handler(self.handler, self.session)
-                message = yield from self.handler.mqtt_deliver_next_message()
+                await self.start_handler(self.handler, self.session)
+                message = await self.handler.mqtt_deliver_next_message()
                 self.assertIsInstance(message, IncomingApplicationMessage)
                 self.assertIsNotNone(message.publish_packet)
                 self.assertIsNone(message.puback_packet)
                 self.assertIsNotNone(message.pubrec_packet)
                 self.assertIsNotNone(message.pubrel_packet)
                 self.assertIsNotNone(message.pubcomp_packet)
-                yield from self.stop_handler(self.handler, self.session)
+                await self.stop_handler(self.handler, self.session)
                 future.set_result(True)
             except Exception as ae:
                 future.set_exception(ae)
@@ -344,16 +330,14 @@ class ProtocolHandlerTest(unittest.TestCase):
         if future.exception():
             raise future.exception()
 
-    @asyncio.coroutine
-    def start_handler(self, handler, session):
+    async def start_handler(self, handler, session):
         self.check_empty_waiters(handler)
         self.check_no_message(session)
-        yield from handler.start()
+        await handler.start()
         self.assertTrue(handler._reader_ready)
 
-    @asyncio.coroutine
-    def stop_handler(self, handler, session):
-        yield from handler.stop()
+    async def stop_handler(self, handler, session):
+        await handler.stop()
         self.assertTrue(handler._reader_stopped)
         self.check_empty_waiters(handler)
         self.check_no_message(session)
@@ -369,9 +353,8 @@ class ProtocolHandlerTest(unittest.TestCase):
         self.assertFalse(session.inflight_in)
 
     def test_publish_qos1_retry(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
-            packet = yield from PublishPacket.from_stream(reader)
+        async def server_mock(reader, writer):
+            packet = await PublishPacket.from_stream(reader)
             try:
                 self.assertEqual(packet.topic_name, '/topic')
                 self.assertEqual(packet.qos, QOS_1)
@@ -379,19 +362,18 @@ class ProtocolHandlerTest(unittest.TestCase):
                 self.assertIn(packet.packet_id, self.session.inflight_out)
                 self.assertIn(packet.packet_id, self.handler._puback_waiters)
                 puback = PubackPacket.build(packet.packet_id)
-                yield from puback.to_stream(writer)
+                await puback.to_stream(writer)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.handler.start()
-                yield from self.stop_handler(self.handler, self.session)
+                await self.handler.start()
+                await self.stop_handler(self.handler, self.session)
                 if not future.done():
                     future.set_result(True)
             except Exception as ae:
@@ -412,34 +394,32 @@ class ProtocolHandlerTest(unittest.TestCase):
             raise future.exception()
 
     def test_publish_qos2_retry(self):
-        @asyncio.coroutine
-        def server_mock(reader, writer):
+        async def server_mock(reader, writer):
             try:
-                packet = yield from PublishPacket.from_stream(reader)
+                packet = await PublishPacket.from_stream(reader)
                 self.assertEqual(packet.topic_name, '/topic')
                 self.assertEqual(packet.qos, QOS_2)
                 self.assertIsNotNone(packet.packet_id)
                 self.assertIn(packet.packet_id, self.session.inflight_out)
                 self.assertIn(packet.packet_id, self.handler._pubrec_waiters)
                 pubrec = PubrecPacket.build(packet.packet_id)
-                yield from pubrec.to_stream(writer)
+                await pubrec.to_stream(writer)
 
-                yield from PubrelPacket.from_stream(reader)
+                await PubrelPacket.from_stream(reader)
                 self.assertIn(packet.packet_id, self.handler._pubcomp_waiters)
                 pubcomp = PubcompPacket.build(packet.packet_id)
-                yield from pubcomp.to_stream(writer)
+                await pubcomp.to_stream(writer)
             except Exception as ae:
                 future.set_exception(ae)
 
-        @asyncio.coroutine
-        def test_coro():
+        async def test_coro():
             try:
-                reader, writer = yield from asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
+                reader, writer = await asyncio.open_connection('127.0.0.1', 8888, loop=self.loop)
                 reader_adapted, writer_adapted = adapt(reader, writer)
                 self.handler = ProtocolHandler(self.plugin_manager, loop=self.loop)
                 self.handler.attach(self.session, reader_adapted, writer_adapted)
-                yield from self.handler.start()
-                yield from self.stop_handler(self.handler, self.session)
+                await self.handler.start()
+                await self.stop_handler(self.handler, self.session)
                 if not future.done():
                     future.set_result(True)
             except Exception as ae:

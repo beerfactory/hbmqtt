@@ -1,11 +1,13 @@
-dist: trusty
+dist: xenial
 sudo: false
 language: python
 
 python:
-  - "3.4"
   - "3.5"
   - "3.6"
+  - "3.7"
+  - "3.8"
+  - "3.9"
   - "nightly"
 matrix:
   allow_failures:

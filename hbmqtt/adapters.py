@@ -16,8 +16,7 @@ class ReaderAdapter:
     Reader adapters are used to adapt read operations on the network depending on the protocol used
     """
 
-    @asyncio.coroutine
-    def read(self, n=-1) -> bytes:
+    async def read(self, n=-1) -> bytes:
         """
         Read up to n bytes. If n is not provided, or set to -1, read until EOF and return all read bytes.
         If the EOF was received and the internal buffer is empty, return an empty bytes object.
@@ -42,8 +41,7 @@ class WriterAdapter:
         write some data to the protocol layer
         """
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         """
         Let the write buffer of the underlying transport a chance to be flushed.
         """
@@ -53,8 +51,7 @@ class WriterAdapter:
         Return peer socket info (remote address and remote port as tuple
         """
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         """
         Close the protocol connection
         """
@@ -69,14 +66,12 @@ class WebSocketsReader(ReaderAdapter):
         self._protocol = protocol
         self._stream = io.BytesIO(b'')
 
-    @asyncio.coroutine
-    def read(self, n=-1) -> bytes:
-        yield from self._feed_buffer(n)
+    async def read(self, n=-1) -> bytes:
+        await self._feed_buffer(n)
         data = self._stream.read(n)
         return data
 
-    @asyncio.coroutine
-    def _feed_buffer(self, n=1):
+    async def _feed_buffer(self, n=1):
         """
         Feed the data buffer by reading a Websocket message.
         :param n: if given, feed buffer until it contains at least n bytes
@@ -84,7 +79,7 @@ class WebSocketsReader(ReaderAdapter):
         buffer = bytearray(self._stream.read())
         while len(buffer) < n:
             try:
-                message = yield from self._protocol.recv()
+                message = await self._protocol.recv()
             except ConnectionClosed:
                 message = None
             if message is None:
@@ -110,22 +105,20 @@ class WebSocketsWriter(WriterAdapter):
         """
         self._stream.write(data)
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         """
         Let the write buffer of the underlying transport a chance to be flushed.
         """
         data = self._stream.getvalue()
         if len(data):
-            yield from self._protocol.send(data)
+            await self._protocol.send(data)
         self._stream = io.BytesIO(b'')
 
     def get_peer_info(self):
         return self._protocol.remote_address
 
-    @asyncio.coroutine
-    def close(self):
-        yield from self._protocol.close()
+    async def close(self):
+        await self._protocol.close()
 
 
 class StreamReaderAdapter(ReaderAdapter):
@@ -137,12 +130,11 @@ class StreamReaderAdapter(ReaderAdapter):
     def __init__(self, reader: StreamReader):
         self._reader = reader
 
-    @asyncio.coroutine
-    def read(self, n=-1) -> bytes:
+    async def read(self, n=-1) -> bytes:
         if n == -1:
-            data = yield from self._reader.read(n)
+            data = await self._reader.read(n)
         else:
-            data = yield from self._reader.readexactly(n)
+            data = await self._reader.readexactly(n)
         return data
 
     def feed_eof(self):
@@ -164,24 +156,22 @@ class StreamWriterAdapter(WriterAdapter):
         if not self.is_closed:
             self._writer.write(data)
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         if not self.is_closed:
-            yield from self._writer.drain()
+            await self._writer.drain()
 
     def get_peer_info(self):
         extra_info = self._writer.get_extra_info('peername')
         return extra_info[0], extra_info[1]
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         if not self.is_closed:
             self.is_closed = True # we first mark this closed so yields below don't cause races with waiting writes
-            yield from self._writer.drain()
+            await self._writer.drain()
             if self._writer.can_write_eof():
                 self._writer.write_eof()
             self._writer.close()
-            try: yield from self._writer.wait_closed() # py37+
+            try: await self._writer.wait_closed() # py37+
             except AttributeError: pass
 
 
@@ -193,8 +183,7 @@ class BufferReader(ReaderAdapter):
     def __init__(self, buffer: bytes):
         self._stream = io.BytesIO(buffer)
 
-    @asyncio.coroutine
-    def read(self, n=-1) -> bytes:
+    async def read(self, n=-1) -> bytes:
         return self._stream.read(n)
 
 
@@ -212,8 +201,7 @@ class BufferWriter(WriterAdapter):
         """
         self._stream.write(data)
 
-    @asyncio.coroutine
-    def drain(self):
+    async def drain(self):
         pass
 
     def get_buffer(self):
@@ -222,6 +210,5 @@ class BufferWriter(WriterAdapter):
     def get_peer_info(self):
         return "BufferWriter", 0
 
-    @asyncio.coroutine
-    def close(self):
+    async def close(self):
         self._stream.close()
