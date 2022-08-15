@@ -493,7 +493,7 @@ class Broker:
                     yield from self.plugins_manager.fire_event(EVENT_BROKER_MESSAGE_RECEIVED,
                                                                client_id=client_session.client_id,
                                                                message=app_message)
-                    yield from self._broadcast_message(client_session, app_message.topic, app_message.data)
+                    yield from self._broadcast_message_acl(client_session, app_message.topic, app_message.data)
                     if app_message.publish_packet.retain_flag:
                         self.retain_message(client_session, app_message.topic, app_message.data, app_message.qos)
                     wait_deliver = asyncio.Task(handler.mqtt_deliver_next_message(), loop=self._loop)
@@ -563,7 +563,7 @@ class Broker:
         return auth_result
 
     @asyncio.coroutine
-    def topic_filtering(self, session: Session, topic):
+    def topic_filtering(self, session: Session, topic, command):
         """
         This method call the topic_filtering method on registered plugins to check that the subscription is allowed.
         User is considered allowed if all plugins called return True.
@@ -573,7 +573,8 @@ class Broker:
          - None if topic filtering can't be achieved (then plugin result is then ignored)
         :param session:
         :param listener:
-        :param topic: Topic in which the client wants to subscribe
+        :param topic: Topic in which the client wants to publish or subscribe
+        :param command: Whether it's a publish (1) or subscibe (0) command
         :return:
         """
         topic_plugins = None
@@ -584,6 +585,7 @@ class Broker:
             "topic_filtering",
             session=session,
             topic=topic,
+            command=command,
             filter_plugins=topic_plugins)
         topic_result = True
         if returns:
@@ -622,7 +624,7 @@ class Broker:
                         # [MQTT-4.7.1-3] + wildcard character must occupy entire level
                         return 0x80
             # Check if the client is authorised to connect to the topic
-            permitted = yield from self.topic_filtering(session, topic=a_filter)
+            permitted = yield from self.topic_filtering(session, topic=a_filter, command=0)
             if not permitted:
                 return 0x80
             qos = subscription[1]
@@ -731,6 +733,13 @@ class Broker:
             if running_tasks:
                 yield from asyncio.wait(running_tasks, loop=self._loop)
             raise # reraise per CancelledError semantics
+
+    @asyncio.coroutine
+    def _broadcast_message_acl(self, session, topic, data, force_qos=None):
+        permitted = yield from self.topic_filtering(session, topic=topic, command=1)
+
+        if permitted:
+            yield from self._broadcast_message(session, topic, data, force_qos)
 
     @asyncio.coroutine
     def _broadcast_message(self, session, topic, data, force_qos=None):
