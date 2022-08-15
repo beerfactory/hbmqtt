@@ -493,7 +493,7 @@ class Broker:
                     yield from self.plugins_manager.fire_event(EVENT_BROKER_MESSAGE_RECEIVED,
                                                                client_id=client_session.client_id,
                                                                message=app_message)
-                    yield from self._broadcast_message(client_session, app_message.topic, app_message.data)
+                    yield from self._broadcast_message_acl(client_session, app_message.topic, app_message.data)
                     if app_message.publish_packet.retain_flag:
                         self.retain_message(client_session, app_message.topic, app_message.data, app_message.qos)
                     wait_deliver = asyncio.Task(handler.mqtt_deliver_next_message(), loop=self._loop)
@@ -731,6 +731,13 @@ class Broker:
             if running_tasks:
                 yield from asyncio.wait(running_tasks, loop=self._loop)
             raise # reraise per CancelledError semantics
+
+    @asyncio.coroutine
+    def _broadcast_message_acl(self, session, topic, data, force_qos=None):
+        permitted = yield from self.topic_filtering(session, topic=topic)
+        
+        if permitted:
+            yield from self._broadcast_message(session, topic, data, force_qos)
 
     @asyncio.coroutine
     def _broadcast_message(self, session, topic, data, force_qos=None):
