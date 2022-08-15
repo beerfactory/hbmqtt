@@ -515,7 +515,7 @@ class MQTTClient:
                 raise ClientException("Missing connection parameter '%s'" % key)
 
         s = Session()
-        s.broker_uri = uri
+        s.broker_uri = broker_conf['uri']
         s.client_id = self.client_id
         s.cafile = broker_conf['cafile']
         s.capath = broker_conf['capath']
