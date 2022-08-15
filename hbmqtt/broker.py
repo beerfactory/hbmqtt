@@ -22,7 +22,9 @@ from hbmqtt.adapters import (
     ReaderAdapter,
     WriterAdapter,
     WebSocketsReader,
-    WebSocketsWriter)
+    WebSocketsWriter,
+    UnixStreamReaderAdapter,
+    UnixStreamWriterAdapter)
 from .plugins.manager import PluginManager, BaseContext
 
 
@@ -260,12 +262,18 @@ class Broker:
                             raise BrokerException("Can't read cert files '%s' or '%s' : %s" %
                                                   (listener['certfile'], listener['keyfile'], fnfe))
 
-                    address, s_port = listener['bind'].split(':')
                     port = 0
+                    path = ''
+                    address = ''
+                    s_port = ''
                     try:
-                        port = int(s_port)
+                        address, s_port = listener['bind'].split(':')
+                        try:
+                            port = int(s_port)
+                        except ValueError as ve:
+                            raise BrokerException("Invalid port value in bind value: %s" % listener['bind'])
                     except ValueError as ve:
-                        raise BrokerException("Invalid port value in bind value: %s" % listener['bind'])
+                        path = listener['bind']
 
                     if listener['type'] == 'tcp':
                         cb_partial = partial(self.stream_connected, listener_name=listener_name)
@@ -280,6 +288,13 @@ class Broker:
                         cb_partial = partial(self.ws_connected, listener_name=listener_name)
                         instance = yield from websockets.serve(cb_partial, address, port, ssl=sc, loop=self._loop,
                                                                subprotocols=['mqtt'])
+                        self._servers[listener_name] = Server(listener_name, instance, max_connections, self._loop)
+                    elif listener['type'] == 'unix':
+                        cb_partial = partial(self.unix_stream_connected, listener_name=listener_name)
+                        instance = yield from asyncio.start_unix_server(cb_partial,
+                                                                        path,
+                                                                        ssl=sc,
+                                                                        loop=self._loop)
                         self._servers[listener_name] = Server(listener_name, instance, max_connections, self._loop)
 
                     self.logger.info("Listener '%s' bind to %s (max_connections=%d)" %
@@ -342,6 +357,10 @@ class Broker:
     @asyncio.coroutine
     def stream_connected(self, reader, writer, listener_name):
         yield from self.client_connected(listener_name, StreamReaderAdapter(reader), StreamWriterAdapter(writer))
+
+    @asyncio.coroutine
+    def unix_stream_connected(self, reader, writer, listener_name):
+        yield from self.client_connected(listener_name, UnixStreamReaderAdapter(reader), UnixStreamWriterAdapter(writer))
 
     @asyncio.coroutine
     def client_connected(self, listener_name, reader: ReaderAdapter, writer: WriterAdapter):

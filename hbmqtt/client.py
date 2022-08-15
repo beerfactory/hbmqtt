@@ -382,6 +382,8 @@ class MQTTClient:
             uri = (scheme, self.session.remote_address + ":" + str(self.session.remote_port), uri_attributes[2],
                    uri_attributes[3], uri_attributes[4], uri_attributes[5])
             self.session.broker_uri = urlunparse(uri)
+        if scheme in ('unix'):
+            self.session.broker_uri = '/' + self.session.remote_address + uri_attributes.path
         # Init protocol handler
         #if not self._handler:
         self._handler = ClientProtocolHandler(self.plugins_manager, loop=self._loop)
@@ -419,6 +421,14 @@ class MQTTClient:
                     **kwargs)
                 reader = WebSocketsReader(websocket)
                 writer = WebSocketsWriter(websocket)
+            elif scheme in ('unix'):
+                conn_reader, conn_writer = \
+                        yield from asyncio.open_unix_connection(
+                                path=self.session.broker_uri,
+                                loop=self._loop, **kwargs)
+                reader = StreamReaderAdapter(conn_reader)
+                writer = StreamWriterAdapter(conn_writer)
+
             # Start MQTT protocol
             self._handler.attach(self.session, reader, writer)
             return_code = yield from self._handler.mqtt_connect()
