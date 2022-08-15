@@ -396,6 +396,8 @@ class MQTTClient:
                 sc.load_cert_chain(self.config['certfile'], self.config['keyfile'])
             if 'check_hostname' in self.config and isinstance(self.config['check_hostname'], bool):
                 sc.check_hostname = self.config['check_hostname']
+            if 'ca_certs' in self.config:
+                sc.load_verify_locations(self.config['ca_certs'])
             kwargs['ssl'] = sc
 
         try:
