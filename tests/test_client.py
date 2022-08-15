@@ -5,6 +5,9 @@ import unittest
 import asyncio
 import os
 import logging
+import urllib.request
+import tempfile
+import shutil
 from hbmqtt.client import MQTTClient, ConnectException
 from hbmqtt.broker import Broker
 from hbmqtt.mqtt.constants import QOS_0, QOS_1, QOS_2
@@ -43,8 +46,15 @@ class MQTTClientTest(unittest.TestCase):
         self.loop = asyncio.new_event_loop()
         asyncio.set_event_loop(self.loop)
 
+        self.temp_dir = tempfile.mkdtemp(prefix='hbmqtt-test-')
+        url = "http://test.mosquitto.org/ssl/mosquitto.org.crt"
+        self.ca_file = os.path.join(self.temp_dir, 'mosquitto.org.crt')
+        urllib.request.urlretrieve(url, self.ca_file)
+        log.info("stored mosquitto cert at %s" % self.ca_file)
+
     def tearDown(self):
         self.loop.close()
+        shutil.rmtree(self.temp_dir)
 
     def test_connect_tcp(self):
         @asyncio.coroutine
@@ -68,8 +78,7 @@ class MQTTClientTest(unittest.TestCase):
         def test_coro():
             try:
                 client = MQTTClient(config={'check_hostname': False})
-                ca = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mosquitto.org.crt')
-                yield from client.connect('mqtts://test.mosquitto.org/', cafile=ca)
+                yield from client.connect('mqtts://test.mosquitto.org/', cafile=self.ca_file)
                 self.assertIsNotNone(client.session)
                 yield from client.disconnect()
                 future.set_result(True)
@@ -115,7 +124,6 @@ class MQTTClientTest(unittest.TestCase):
         self.loop.run_until_complete(test_coro())
         if future.exception():
             raise future.exception()
-            raise future.exception()
 
     def test_reconnect_ws_retain_username_password(self):
         @asyncio.coroutine
@@ -148,8 +156,7 @@ class MQTTClientTest(unittest.TestCase):
                 broker = Broker(broker_config, plugin_namespace="hbmqtt.test.plugins")
                 yield from broker.start()
                 client = MQTTClient()
-                ca = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'mosquitto.org.crt')
-                yield from client.connect('ws://127.0.0.1:8081/', cafile=ca)
+                yield from client.connect('ws://127.0.0.1:8081/', cafile=self.ca_file)
                 self.assertIsNotNone(client.session)
                 yield from client.disconnect()
                 yield from broker.shutdown()
